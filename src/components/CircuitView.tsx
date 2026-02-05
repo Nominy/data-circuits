@@ -24,6 +24,9 @@ export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
   const currentLabelByResistorId = solved?.ok
     ? Object.fromEntries(solved.result.resistors.map((r) => [r.id, `I${r.index}`]))
     : ({} as Record<string, string>)
+  const resistorLabelById = solved?.ok
+    ? Object.fromEntries(solved.result.resistors.map((r) => [r.id, `R${r.index}`]))
+    : ({} as Record<string, string>)
 
   const pad = 1.4
   const minX = bounds.minX - pad
@@ -105,6 +108,8 @@ export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
           }
 
           const displayLabel = c.generated && !settings.showGeneratedLabels ? undefined : c.label
+          const solvedLabel = !c.generated ? resistorLabelById[c.id] : undefined
+          const effectiveLabel = solvedLabel ?? displayLabel
           const fill = c.generated ? 'rgba(128,160,255,0.18)' : 'rgba(0,0,0,0.55)'
           const stroke = c.generated ? 'rgba(128,160,255,0.75)' : 'rgba(255,255,255,0.9)'
           const dash = c.generated ? '0.14 0.14' : undefined
@@ -126,9 +131,9 @@ export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
                   vectorEffect="non-scaling-stroke"
                   strokeDasharray={dash}
                 />
-                {displayLabel ? (
+                {effectiveLabel ? (
                   <text x={midX} y={midY - 0.42} fontSize={0.25} textAnchor="middle" fill="rgba(255,255,255,0.85)">
-                    {displayLabel}
+                    {effectiveLabel}
                   </text>
                 ) : null}
                 {settings.showValuesOnDiagram && typeof c.ohms === 'number' ? (
@@ -156,9 +161,9 @@ export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
                 vectorEffect="non-scaling-stroke"
                 strokeDasharray={dash}
               />
-              {displayLabel ? (
+              {effectiveLabel ? (
                 <text x={midX + 0.55} y={midY + 0.05} fontSize={0.25} textAnchor="middle" fill="rgba(255,255,255,0.85)">
-                  {displayLabel}
+                  {effectiveLabel}
                 </text>
               ) : null}
               {settings.showValuesOnDiagram && typeof c.ohms === 'number' ? (

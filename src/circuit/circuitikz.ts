@@ -81,7 +81,8 @@ export function exportCircuitikz(circuit: Circuit, options?: CircuitikzOptions):
       const parts: string[] = ['R']
       const labelAllowed = opts.includeLabels && (!d.generated || opts.includeGeneratedLabels)
       if (labelAllowed) {
-        const label = d.label && d.label.trim().length > 0 ? d.label : opts.resistorAutoLabelsById[d.id]
+        const auto = opts.resistorAutoLabelsById[d.id]
+        const label = auto ? auto : d.label && d.label.trim().length > 0 ? d.label : undefined
         if (label && label.trim().length > 0) parts.push(`l=$\\mathrm{${escapeLatexText(label)}}$`)
       }
       if (opts.includeValues && typeof d.ohms === 'number') {

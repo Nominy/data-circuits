@@ -41,9 +41,77 @@ function eqErr(error: string): EqErr {
   return { ok: false, error }
 }
 
+function visitNodes(items: Node[], fn: (node: Node) => void) {
+  for (const node of items) {
+    fn(node)
+    if (node.kind === 'series') visitNodes(node.items, fn)
+    if (node.kind === 'parallel') {
+      for (const b of node.branches) visitNodes(b.items, fn)
+    }
+  }
+}
+
 function seriesItemsForCircuit(circuit: Circuit): Node[] {
   if (circuit.route.mode === 'u') return [...(circuit.top ?? []), ...(circuit.right ?? []), ...(circuit.bottom ?? [])]
   return [...(circuit.items ?? [])]
+}
+
+function parseResistorIndex(name: string): number | null {
+  const trimmed = name.trim()
+  if (trimmed.length === 0) return null
+  // Accept: R1, R_1, R{1}, R_{1}, r 1
+  const m = trimmed.match(/^R\s*(?:[_-]?\s*)?(?:\{?\s*_?\s*\{?\s*)?(\d+)\s*\}*\s*$/i)
+  if (!m) return null
+  const idx = Number(m[1])
+  if (!Number.isInteger(idx)) return null
+  return idx
+}
+
+function assignResistorIndices(
+  circuit: Circuit,
+  includeGeneratedResistors: boolean,
+): { ok: true; indexById: Record<string, number> } | { ok: false; error: string } {
+  const resistors: Resistor[] = []
+  const root = seriesItemsForCircuit(circuit)
+  visitNodes(root, (n) => {
+    if (n.kind !== 'resistor') return
+    if (!includeGeneratedResistors && n.generated) return
+    resistors.push(n)
+  })
+
+  const used = new Map<number, string>()
+  const indexById: Record<string, number> = {}
+  const unspecified: Resistor[] = []
+
+  for (const r of resistors) {
+    const label = r.name?.trim() ?? ''
+    if (label.length === 0) {
+      unspecified.push(r)
+      continue
+    }
+    const idx = parseResistorIndex(label)
+    if (idx === null) {
+      return {
+        ok: false,
+        error: `Invalid resistor label "${label}". Use R1 / R_1 / R{1} / R_{1} to set its index.`,
+      }
+    }
+    if (idx <= 0) return { ok: false, error: `Invalid resistor index R_${idx}. Indices must be positive integers (>= 1).` }
+    const prev = used.get(idx)
+    if (prev) return { ok: false, error: `Duplicate resistor index R_${idx}. Each resistor must have a unique index.` }
+    used.set(idx, r.id)
+    indexById[r.id] = idx
+  }
+
+  let next = 1
+  for (const r of unspecified) {
+    while (used.has(next)) next += 1
+    used.set(next, r.id)
+    indexById[r.id] = next
+    next += 1
+  }
+
+  return { ok: true, indexById }
 }
 
 function equivalentResistanceOfParallel(node: ParallelBlock): EqOk | EqErr {
@@ -101,19 +169,22 @@ export function solveCircuitCurrentsAndVoltages(
   if (!Number.isFinite(totalCurrentA)) return { ok: false, error: 'Invalid current result.' }
 
   const includeGenerated = options?.includeGeneratedResistors ?? false
+  const assigned = assignResistorIndices(circuit, includeGenerated)
+  if (!assigned.ok) return { ok: false, error: assigned.error }
+  const indexByResistorId = assigned.indexById
+
   const resistors: ResistorResult[] = []
-  const resistorIndexById: Record<string, number> = {}
-  let resistorCounter = 0
+  const resistorIndexById: Record<string, number> = { ...indexByResistorId }
 
   type CurrentContext = { formulaLatex: string }
 
-  const recordResistor = (node: Resistor, currentA: number, voltageV: number, ctx: CurrentContext) => {
-    if (!includeGenerated && node.generated) return
-    resistorCounter += 1
-    resistorIndexById[node.id] = resistorCounter
+  const recordResistor = (node: Resistor, currentA: number, voltageV: number, ctx: CurrentContext): EqErr | null => {
+    if (!includeGenerated && node.generated) return null
+    const idx = indexByResistorId[node.id]
+    if (!idx) return eqErr('Internal error: missing resistor index assignment.')
     resistors.push({
       id: node.id,
-      index: resistorCounter,
+      index: idx,
       ohms: node.ohms,
       currentA,
       voltageV,
@@ -121,6 +192,7 @@ export function solveCircuitCurrentsAndVoltages(
       generated: node.generated,
       name: node.name,
     })
+    return null
   }
 
   const solveSeries = (items: Node[], currentA: number, ctx: CurrentContext) => {
@@ -137,7 +209,8 @@ export function solveCircuitCurrentsAndVoltages(
   const solveNode = (node: Node, currentA: number, voltageV: number, ctx: CurrentContext): { ok: true } | EqErr => {
     if (node.kind === 'ammeter') return { ok: true }
     if (node.kind === 'resistor') {
-      recordResistor(node, currentA, voltageV, ctx)
+      const err = recordResistor(node, currentA, voltageV, ctx)
+      if (err) return err
       return { ok: true }
     }
     if (node.kind === 'series') return solveSeries(node.items, currentA, ctx)
@@ -163,6 +236,8 @@ export function solveCircuitCurrentsAndVoltages(
   }
   const solvedRoot = solveSeries(rootItems, totalCurrentA, rootCtx)
   if (!solvedRoot.ok) return { ok: false, error: solvedRoot.error }
+
+  resistors.sort((a, b) => a.index - b.index)
 
   return {
     ok: true,
