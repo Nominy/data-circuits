@@ -1,0 +1,270 @@
+{
+  "kind": "circuit",
+  "id": "circuit_a8f3eadd-e446-4e48-9535-3e169599868b",
+  "route": {
+    "mode": "u"
+  },
+  "top": [
+    {
+      "kind": "parallel",
+      "id": "p_5dae6096-8475-4864-a87f-c83175a2f5d6",
+      "branches": [
+        {
+          "id": "b_22103c54-7995-40e2-94d1-ac0e56fc7472",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_2ead1635-a27d-4fa1-a2b5-82dc519391da",
+              "name": "R2",
+              "ohms": 1
+            }
+          ]
+        },
+        {
+          "id": "b_8c8a9dfd-d16f-4897-ba66-8768e17078c5",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_c81f3bc9-e140-419c-9c21-1f688f9dbd20",
+              "name": "R1",
+              "ohms": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "resistor",
+      "id": "r_197efbde-e5a9-4279-a9f8-ebab5820bc16",
+      "name": "R3",
+      "ohms": 0.5
+    },
+    {
+      "kind": "parallel",
+      "id": "p_172bccbc-6563-489d-9fd8-aacb0e01f66b",
+      "branches": [
+        {
+          "id": "b_518cc77f-99f2-4d38-a2ec-97ed963ee3e1",
+          "items": [
+            {
+              "kind": "parallel",
+              "id": "p_d5043932-9a9e-4094-a6e2-625fae02d105",
+              "branches": [
+                {
+                  "id": "b_59c316e8-4146-40d2-87e7-5c782b1b388f",
+                  "items": [
+                    {
+                      "kind": "resistor",
+                      "id": "r_6ec249f9-69ea-4ad6-b492-29a73cc683d7",
+                      "name": "R6",
+                      "ohms": 2
+                    }
+                  ]
+                },
+                {
+                  "id": "b_b3d91545-3412-400d-be71-592592db80d4",
+                  "items": [
+                    {
+                      "kind": "resistor",
+                      "id": "r_81dd42ca-8413-4871-b10b-e2019cf8c6a8",
+                      "name": "R5",
+                      "ohms": 2
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "resistor",
+              "id": "r_b8f54cb4-01bc-4ba5-bd80-a02837d243c4",
+              "name": "R7",
+              "ohms": 1
+            }
+          ]
+        },
+        {
+          "id": "b_882534fa-ddee-48a4-87ba-1e7dc7fc4b6e",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_c7c1b5a8-5f8f-4cf1-ac74-ea85d2cec2ed",
+              "name": "R4",
+              "ohms": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "parallel",
+      "id": "p_e8645816-87ac-48d2-88ca-e7a0e8aa3a16",
+      "branches": [
+        {
+          "id": "b_e2a17442-95ac-4ead-82ea-4f3dbf885ae3",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_611d21ed-4adf-4caf-a42b-c65d296772a9",
+              "name": "R10",
+              "ohms": 2
+            }
+          ]
+        },
+        {
+          "id": "b_7ec6a5e3-f661-469c-bb5e-812568e3f2ff",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_de541e7c-004d-45fb-8f24-0005c31131ed",
+              "name": "R9",
+              "ohms": 4
+            }
+          ]
+        },
+        {
+          "id": "b_138ca73a-f3ed-4d84-a9da-fba5d9c29e9f",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_fbf4ca06-f365-47b2-95bd-69432965093d",
+              "name": "R8",
+              "ohms": 4
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "right": [
+    {
+      "kind": "series",
+      "id": "s_9b22a8e5-9b4a-470f-9607-2bf1dc173be8",
+      "items": []
+    },
+    {
+      "kind": "series",
+      "id": "s_967bf84f-d9e9-40ce-8c63-13d05b1ce94c",
+      "items": [
+        {
+          "kind": "series",
+          "id": "s_b182cd7b-872f-4acc-9637-732cba40aa05",
+          "items": []
+        }
+      ]
+    }
+  ],
+  "bottom": [
+    {
+      "kind": "parallel",
+      "id": "p_0a34b831-76b6-49b4-995d-2e1ac07a2680",
+      "branches": [
+        {
+          "id": "b_7dc58f5e-8591-493c-9d79-62f4021535c0",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_7c67d630-9914-4d9e-9ce2-93d014191ded",
+              "name": "R13",
+              "ohms": 1
+            }
+          ]
+        },
+        {
+          "id": "b_36d6bc46-89c7-4836-b43c-a687beea66f2",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_cce2cac0-acad-4d37-a57e-0a642ac34a5e",
+              "name": "R12",
+              "ohms": 2
+            }
+          ]
+        },
+        {
+          "id": "b_56b0bb02-e689-4b72-9b9c-943f7c545ffe",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_e1583bb5-cf29-4b70-9649-ab2a50cd8b9a",
+              "name": "R11",
+              "ohms": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "parallel",
+      "id": "p_dc5ea0b7-5069-45c1-944b-3b62f134350c",
+      "branches": [
+        {
+          "id": "b_a8515b32-5097-4b41-953a-423076343285",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_4f581f59-48b5-41c9-af8a-f02b8d8fa1c0",
+              "name": "R15",
+              "ohms": 10
+            }
+          ]
+        },
+        {
+          "id": "b_c6bfc698-448b-476e-98b5-15218f5db411",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_a54774d4-1fde-4ab1-aa48-3369a9bd99b8",
+              "name": "R14",
+              "ohms": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "parallel",
+      "id": "p_2cac5d6a-de80-4767-b127-5afa06db2afc",
+      "branches": [
+        {
+          "id": "b_049e60e9-0c60-4995-aafa-4fbb7f971d91",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_51a4dced-852d-4239-b5f5-ecc067f2b690",
+              "name": "R19",
+              "ohms": 1
+            }
+          ]
+        },
+        {
+          "id": "b_8bd92cbb-a7b8-481c-a364-1ab5fe7c9635",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_d3ca5580-befe-4434-b77d-292cd86c8eec",
+              "name": "R18",
+              "ohms": 1
+            },
+            {
+              "kind": "resistor",
+              "id": "r_0e30a46d-68af-42f9-a3ab-13c40744988b",
+              "name": "R17",
+              "ohms": 1
+            }
+          ]
+        },
+        {
+          "id": "b_7b7c7b35-b2c1-4d74-bb68-74d43ebd1373",
+          "items": [
+            {
+              "kind": "resistor",
+              "id": "r_61c89ec7-5a85-48c5-a5a7-4d690db0b34c",
+              "name": "R16",
+              "ohms": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
