@@ -20,6 +20,22 @@ export type ComponentDrawable =
       to: Point
       label?: string
     }
+  | {
+      kind: 'vsource'
+      id: string
+      from: Point
+      to: Point
+      label?: string
+      volts?: number
+    }
+  | {
+      kind: 'isource'
+      id: string
+      from: Point
+      to: Point
+      label?: string
+      amps?: number
+    }
 export type TerminalDrawable = { kind: 'terminal'; at: Point; polarity: 'plus' | 'minus' }
 
 export type Drawable = WireDrawable | ComponentDrawable | TerminalDrawable
@@ -28,6 +44,8 @@ export type LayoutOptions = {
   wire: number
   resistorLen: number
   ammeterLen: number
+  sourceLen: number
+  includeTerminals: boolean
   branchGap: number
   minBranchHeight: number
 }
@@ -41,6 +59,8 @@ const defaultOptions: LayoutOptions = {
   wire: 1,
   resistorLen: 2,
   ammeterLen: 1.6,
+  sourceLen: 1.6,
+  includeTerminals: true,
   branchGap: 2,
   minBranchHeight: 1,
 }
@@ -83,6 +103,7 @@ function measureParallel(node: ParallelBlock, opts: LayoutOptions): Measure {
 function measureNode(node: Node, opts: LayoutOptions): Measure {
   if (node.kind === 'resistor') return { w: opts.resistorLen, h: 0 }
   if (node.kind === 'ammeter') return { w: opts.ammeterLen, h: 0 }
+  if (node.kind === 'vsource' || node.kind === 'isource') return { w: opts.sourceLen, h: 0 }
   if (node.kind === 'series') return measureSeries(node.items, opts)
   return measureParallel(node, opts)
 }
@@ -135,6 +156,22 @@ type LocalComponent =
       from: Point
       to: Point
       label?: string
+    }
+  | {
+      kind: 'vsource'
+      id: string
+      from: Point
+      to: Point
+      label?: string
+      volts?: number
+    }
+  | {
+      kind: 'isource'
+      id: string
+      from: Point
+      to: Point
+      label?: string
+      amps?: number
     }
 
 function addComponentLocal(drawables: Drawable[], bounds: LayoutResult['bounds'], frame: Frame, component: LocalComponent) {
@@ -263,6 +300,16 @@ function layoutNodeLocal(
     addComponentLocal(drawables, bounds, frame, { kind: 'ammeter', id: node.id, from: start, to: end, label: node.name })
     return end
   }
+  if (node.kind === 'vsource') {
+    const end = { x: start.x + opts.sourceLen, y: start.y }
+    addComponentLocal(drawables, bounds, frame, { kind: 'vsource', id: node.id, from: start, to: end, label: node.name, volts: node.volts })
+    return end
+  }
+  if (node.kind === 'isource') {
+    const end = { x: start.x + opts.sourceLen, y: start.y }
+    addComponentLocal(drawables, bounds, frame, { kind: 'isource', id: node.id, from: start, to: end, label: node.name, amps: node.amps })
+    return end
+  }
   if (node.kind === 'series') {
     return layoutSeriesLocal(node.items, start, frame, drawables, bounds, opts)
   }
@@ -275,7 +322,7 @@ export function layoutCircuit(circuit: Circuit, options?: Partial<LayoutOptions>
   const bounds = { minX: 0, minY: 0, maxX: 0, maxY: 0 }
 
   const startGlobal = { x: 0, y: 0 }
-  addTerminal(drawables, bounds, { kind: 'terminal', at: startGlobal, polarity: 'plus' })
+  if (opts.includeTerminals) addTerminal(drawables, bounds, { kind: 'terminal', at: startGlobal, polarity: 'plus' })
 
   const route = circuit.route
   if (route.mode === 'u') {
@@ -318,7 +365,7 @@ export function layoutCircuit(circuit: Circuit, options?: Partial<LayoutOptions>
     if (endBottomGlobal.x !== minusAt.x) {
       addWire(drawables, bounds, [endBottomGlobal, minusAt])
     }
-    addTerminal(drawables, bounds, { kind: 'terminal', at: minusAt, polarity: 'minus' })
+    if (opts.includeTerminals) addTerminal(drawables, bounds, { kind: 'terminal', at: minusAt, polarity: 'minus' })
     return { drawables, bounds }
   }
 
@@ -326,6 +373,6 @@ export function layoutCircuit(circuit: Circuit, options?: Partial<LayoutOptions>
   const frame: Frame = { origin: startGlobal, ax: { x: 1, y: 0 }, ay: { x: 0, y: -1 } }
   const endLocal = layoutSeriesLocal(circuit.items ?? [], { x: 0, y: 0 }, frame, drawables, bounds, opts)
   const endGlobal = mapPoint(frame, endLocal)
-  addTerminal(drawables, bounds, { kind: 'terminal', at: endGlobal, polarity: 'minus' })
+  if (opts.includeTerminals) addTerminal(drawables, bounds, { kind: 'terminal', at: endGlobal, polarity: 'minus' })
   return { drawables, bounds }
 }

@@ -5,6 +5,7 @@ import { exportCircuitikz } from '../circuit/circuitikz'
 import { exportCircuitJson, parseCircuitJson } from '../circuit/jsonIo'
 import { computeReductionLevels } from '../circuit/reduce'
 import { exportSolutionLatex } from '../circuit/solutionExport'
+import { circuitHasIndependentSources } from '../circuit/graph'
 import { useCircuitStore } from '../store/circuitStore'
 
 type Mode = 'circuitikz' | 'solution-latex' | 'json'
@@ -16,6 +17,7 @@ type Props = {
 export function ExportPanel({ circuit }: Props) {
   const settings = useCircuitStore((s) => s.settings)
   const setCircuit = useCircuitStore((s) => s.setCircuit)
+  const nodeCircuit = useCircuitStore((s) => s.nodeCircuit)
   const supplyVoltsText = useCircuitStore((s) => s.analysis.supplyVoltsText)
   const setSupplyVoltsText = useCircuitStore((s) => s.setSupplyVoltsText)
   const [mode, setMode] = useState<Mode>('solution-latex')
@@ -26,17 +28,21 @@ export function ExportPanel({ circuit }: Props) {
   const [importError, setImportError] = useState<string | null>(null)
 
   const reduction = useMemo(() => computeReductionLevels(circuit), [circuit])
+  const hasSources = useMemo(() => circuitHasIndependentSources(circuit), [circuit])
 
   const text = useMemo(() => {
     const opts = { includeLabels, includeValues, includeGeneratedLabels }
-    if (mode === 'circuitikz') return exportCircuitikz(circuit, opts)
+    if (mode === 'circuitikz') {
+      const includeTerminals = supplyVoltsText.trim().length > 0 ? true : !hasSources
+      return exportCircuitikz(circuit, { ...opts, includeTerminals })
+    }
     if (mode === 'json') return exportCircuitJson(circuit)
 
     const raw = supplyVoltsText.trim()
     const supplyVolts = raw.length === 0 ? undefined : Number(raw)
     const analysis = raw.length === 0 || !Number.isFinite(supplyVolts) ? undefined : { supplyVolts }
-    return exportSolutionLatex(reduction.levels, opts, analysis)
-  }, [mode, circuit, includeLabels, includeValues, includeGeneratedLabels, reduction.levels, supplyVoltsText])
+    return exportSolutionLatex(reduction.levels, opts, analysis, nodeCircuit)
+  }, [mode, circuit, includeLabels, includeValues, includeGeneratedLabels, reduction.levels, supplyVoltsText, hasSources, nodeCircuit])
 
   const copy = async () => {
     await navigator.clipboard.writeText(text)
@@ -131,7 +137,7 @@ export function ExportPanel({ circuit }: Props) {
               style={{ width: 120 }}
             />
             <div className="mutedSmall" style={{ marginLeft: 6 }}>
-              Supply $U_s$ in volts (enables $I_k$ and $U_k$ in LaTeX + current arrows).
+              External supply $U_s$ in volts (optional: added as a voltage source between + and - terminals).
             </div>
           </div>
         </div>

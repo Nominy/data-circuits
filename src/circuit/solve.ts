@@ -1,4 +1,6 @@
-import type { Circuit, Node, ParallelBlock, Resistor } from './model'
+import type { Ammeter, Circuit, Node, Resistor } from './model'
+import { buildCircuitGraph } from './graph'
+import { solveCircuitBySuperposition, type SuperpositionOk, type SuperpositionSource } from './superposition'
 
 export type ResistorResult = {
   id: string
@@ -11,12 +13,29 @@ export type ResistorResult = {
   name?: string
 }
 
+export type AmmeterResult = {
+  id: string
+  index: number
+  currentA: number
+  currentFormulaLatex: string
+  name?: string
+}
+
+export type SuperpositionDetails = {
+  sources: SuperpositionSource[]
+  cases: SuperpositionOk['cases']
+  totalNodeVoltages: number[]
+  totalVoltageSourceCurrentsById: Record<string, number>
+}
+
 export type CircuitSolveResult = {
-  supplyVolts: number
-  totalOhms: number
-  totalCurrentA: number
+  externalSupplyVolts?: number
+  externalSupplyCurrentA?: number
   resistors: ResistorResult[]
+  ammeters: AmmeterResult[]
   resistorIndexById: Record<string, number>
+  ammeterIndexById: Record<string, number>
+  superposition: SuperpositionDetails
 }
 
 type SolveOptions = {
@@ -34,12 +53,8 @@ function formatNum(value: number): string {
   return rounded.replace(/\.?0+$/, '')
 }
 
-type EqOk = { ok: true; ohms: number }
-type EqErr = { ok: false; error: string }
-
-function eqErr(error: string): EqErr {
-  return { ok: false, error }
-}
+type SolveOk = { ok: true; result: CircuitSolveResult }
+type SolveErr = { ok: false; error: string }
 
 function visitNodes(items: Node[], fn: (node: Node) => void) {
   for (const node of items) {
@@ -61,6 +76,17 @@ function parseResistorIndex(name: string): number | null {
   if (trimmed.length === 0) return null
   // Accept: R1, R_1, R{1}, R_{1}, r 1
   const m = trimmed.match(/^R\s*(?:[_-]?\s*)?(?:\{?\s*_?\s*\{?\s*)?(\d+)\s*\}*\s*$/i)
+  if (!m) return null
+  const idx = Number(m[1])
+  if (!Number.isInteger(idx)) return null
+  return idx
+}
+
+function parseAmmeterIndex(name: string): number | null {
+  const trimmed = name.trim()
+  if (trimmed.length === 0) return null
+  // Accept: A1, A_1, A{1}, A_{1}, a 1
+  const m = trimmed.match(/^A\s*(?:[_-]?\s*)?(?:\{?\s*_?\s*\{?\s*)?(\d+)\s*\}*\s*$/i)
   if (!m) return null
   const idx = Number(m[1])
   if (!Number.isInteger(idx)) return null
@@ -114,139 +140,133 @@ function assignResistorIndices(
   return { ok: true, indexById }
 }
 
-function equivalentResistanceOfParallel(node: ParallelBlock): EqOk | EqErr {
-  if (node.branches.length < 2) return eqErr('Parallel block must have at least 2 branches.')
-  const branchOhms: number[] = []
-  for (const b of node.branches) {
-    const r = equivalentResistanceOfSeries(b.items)
-    if (!r.ok) return r
-    if (r.ohms === 0) return eqErr('Short circuit detected: a parallel branch has 0Ω.')
-    branchOhms.push(r.ohms)
-  }
-  const denom = branchOhms.reduce((acc, r) => acc + 1 / r, 0)
-  const ohms = 1 / denom
-  if (ohms === 0) return eqErr('Short circuit detected (0Ω equivalent).')
-  if (!Number.isFinite(ohms) || ohms < 0) return eqErr('Invalid resistance value during reduction.')
-  return { ok: true, ohms }
-}
-
-function equivalentResistanceOfNode(node: Node): EqOk | EqErr {
-  if (node.kind === 'ammeter') return { ok: true, ohms: 0 }
-  if (node.kind === 'resistor') {
-    if (!Number.isFinite(node.ohms) || node.ohms <= 0) return eqErr('Invalid resistance value.')
-    return { ok: true, ohms: node.ohms }
-  }
-  if (node.kind === 'series') return equivalentResistanceOfSeries(node.items)
-  return equivalentResistanceOfParallel(node)
-}
-
-function equivalentResistanceOfSeries(items: Node[]): EqOk | EqErr {
-  if (items.length === 0) return { ok: true, ohms: 0 }
-  let sum = 0
-  for (const n of items) {
-    const r = equivalentResistanceOfNode(n)
-    if (!r.ok) return r
-    sum += r.ohms
-  }
-  if (!Number.isFinite(sum) || sum < 0) return eqErr('Invalid resistance value during reduction.')
-  return { ok: true, ohms: sum }
-}
-
-export function solveCircuitCurrentsAndVoltages(
+function assignAmmeterIndices(
   circuit: Circuit,
-  supplyVolts: number,
+): { ok: true; indexById: Record<string, number> } | { ok: false; error: string } {
+  const ammeters: Ammeter[] = []
+  const root = seriesItemsForCircuit(circuit)
+  visitNodes(root, (n) => {
+    if (n.kind !== 'ammeter') return
+    ammeters.push(n)
+  })
+
+  const used = new Map<number, string>()
+  const indexById: Record<string, number> = {}
+  const unspecified: Ammeter[] = []
+
+  for (const a of ammeters) {
+    const label = a.name?.trim() ?? ''
+    if (label.length === 0) {
+      unspecified.push(a)
+      continue
+    }
+    const idx = parseAmmeterIndex(label)
+    if (idx === null) {
+      return {
+        ok: false,
+        error: `Invalid ammeter label "${label}". Use A1 / A_1 / A{1} / A_{1} to set its index.`,
+      }
+    }
+    if (idx <= 0) return { ok: false, error: `Invalid ammeter index A_${idx}. Indices must be positive integers (>= 1).` }
+    const prev = used.get(idx)
+    if (prev) return { ok: false, error: `Duplicate ammeter index A_${idx}. Each ammeter must have a unique index.` }
+    used.set(idx, a.id)
+    indexById[a.id] = idx
+  }
+
+  let next = 1
+  for (const a of unspecified) {
+    while (used.has(next)) next += 1
+    used.set(next, a.id)
+    indexById[a.id] = next
+    next += 1
+  }
+
+  return { ok: true, indexById }
+}
+
+export function solveCircuit(
+  circuit: Circuit,
+  analysis?: { externalSupplyVolts?: number },
   options?: SolveOptions,
-): { ok: true; result: CircuitSolveResult } | { ok: false; error: string } {
-  if (!Number.isFinite(supplyVolts)) return { ok: false, error: 'Supply voltage must be a finite number.' }
-  if (supplyVolts < 0) return { ok: false, error: 'Supply voltage must be non-negative.' }
-
-  const rootItems = seriesItemsForCircuit(circuit)
-  const totalR = equivalentResistanceOfSeries(rootItems)
-  if (!totalR.ok) return { ok: false, error: totalR.error }
-  if (totalR.ohms === 0) return { ok: false, error: 'Short circuit detected (0Ω total resistance).' }
-
-  const totalCurrentA = supplyVolts / totalR.ohms
-  if (!Number.isFinite(totalCurrentA)) return { ok: false, error: 'Invalid current result.' }
-
+): SolveOk | SolveErr {
   const includeGenerated = options?.includeGeneratedResistors ?? false
   const assigned = assignResistorIndices(circuit, includeGenerated)
   if (!assigned.ok) return { ok: false, error: assigned.error }
-  const indexByResistorId = assigned.indexById
+  const resistorIndexById = assigned.indexById
+  const assignedAmmeters = assignAmmeterIndices(circuit)
+  if (!assignedAmmeters.ok) return { ok: false, error: assignedAmmeters.error }
+  const ammeterIndexById = assignedAmmeters.indexById
+
+  const externalSupplyVolts = analysis?.externalSupplyVolts
+  if (typeof externalSupplyVolts === 'number' && (!Number.isFinite(externalSupplyVolts) || externalSupplyVolts < 0)) {
+    return { ok: false, error: 'External supply voltage must be a finite, non-negative number.' }
+  }
+
+  const solved = solveCircuitBySuperposition(circuit, { externalSupplyVolts })
+  if (!solved.ok) return solved
+
+  const graph = buildCircuitGraph(circuit, { externalSupplyVolts })
+  const resistorElements = graph.elements.filter((e) => e.kind === 'resistor')
+  const ammeterElements = graph.elements
+    .filter((e) => e.kind === 'vsource' && e.id.startsWith('ammeter:'))
+    .map((e) => ({ id: e.id.slice('ammeter:'.length), name: e.name }))
 
   const resistors: ResistorResult[] = []
-  const resistorIndexById: Record<string, number> = { ...indexByResistorId }
-
-  type CurrentContext = { formulaLatex: string }
-
-  const recordResistor = (node: Resistor, currentA: number, voltageV: number, ctx: CurrentContext): EqErr | null => {
-    if (!includeGenerated && node.generated) return null
-    const idx = indexByResistorId[node.id]
-    if (!idx) return eqErr('Internal error: missing resistor index assignment.')
+  for (const r of resistorElements) {
+    if (!includeGenerated && r.generated) continue
+    const idx = resistorIndexById[r.id]
+    if (!idx) return { ok: false, error: 'Internal error: missing resistor index assignment.' }
+    const currentA = solved.totalResistorCurrentsById[r.id] ?? 0
+    const voltageV = solved.totalResistorVoltagesById[r.id] ?? currentA * r.ohms
     resistors.push({
-      id: node.id,
+      id: r.id,
       index: idx,
-      ohms: node.ohms,
+      ohms: r.ohms,
       currentA,
       voltageV,
-      currentFormulaLatex: ctx.formulaLatex,
-      generated: node.generated,
-      name: node.name,
+      currentFormulaLatex: `\\frac{${formatNum(voltageV)}}{${formatNum(r.ohms)}} = ${formatNum(currentA)}\\,\\mathrm{A}`,
+      generated: r.generated,
+      name: r.name,
     })
-    return null
   }
-
-  const solveSeries = (items: Node[], currentA: number, ctx: CurrentContext) => {
-    for (const n of items) {
-      const r = equivalentResistanceOfNode(n)
-      if (!r.ok) return r
-      const v = currentA * r.ohms
-      const solved = solveNode(n, currentA, v, ctx)
-      if (!solved.ok) return solved
-    }
-    return { ok: true as const }
-  }
-
-  const solveNode = (node: Node, currentA: number, voltageV: number, ctx: CurrentContext): { ok: true } | EqErr => {
-    if (node.kind === 'ammeter') return { ok: true }
-    if (node.kind === 'resistor') {
-      const err = recordResistor(node, currentA, voltageV, ctx)
-      if (err) return err
-      return { ok: true }
-    }
-    if (node.kind === 'series') return solveSeries(node.items, currentA, ctx)
-
-    // parallel: voltage shared, currents split
-    for (const b of node.branches) {
-      const rBranch = equivalentResistanceOfSeries(b.items)
-      if (!rBranch.ok) return rBranch
-      if (rBranch.ohms === 0) return eqErr('Short circuit detected: a parallel branch has 0Ω.')
-      const iBranch = voltageV / rBranch.ohms
-      if (!Number.isFinite(iBranch)) return eqErr('Invalid current result.')
-      const branchCtx: CurrentContext = {
-        formulaLatex: `\\frac{${formatNum(voltageV)}}{${formatNum(rBranch.ohms)}} = ${formatNum(iBranch)}\\,\\mathrm{A}`,
-      }
-      const solved = solveSeries(b.items, iBranch, branchCtx)
-      if (!solved.ok) return solved
-    }
-    return { ok: true }
-  }
-
-  const rootCtx: CurrentContext = {
-    formulaLatex: `\\frac{U_s}{R_{\\mathrm{eq}}} = \\frac{${formatNum(supplyVolts)}}{${formatNum(totalR.ohms)}} = ${formatNum(totalCurrentA)}\\,\\mathrm{A}`,
-  }
-  const solvedRoot = solveSeries(rootItems, totalCurrentA, rootCtx)
-  if (!solvedRoot.ok) return { ok: false, error: solvedRoot.error }
-
   resistors.sort((a, b) => a.index - b.index)
+
+  const ammeters: AmmeterResult[] = []
+  for (const a of ammeterElements) {
+    const idx = ammeterIndexById[a.id]
+    if (!idx) return { ok: false, error: 'Internal error: missing ammeter index assignment.' }
+    const currentA = solved.totalVoltageSourceCurrentsById[`ammeter:${a.id}`] ?? 0
+    ammeters.push({
+      id: a.id,
+      index: idx,
+      currentA,
+      currentFormulaLatex: `${formatNum(currentA)}\\,\\mathrm{A}`,
+      name: a.name,
+    })
+  }
+  ammeters.sort((a, b) => a.index - b.index)
+
+  const externalSupplyCurrentA =
+    typeof externalSupplyVolts === 'number' && Number.isFinite(externalSupplyVolts)
+      ? solved.totalVoltageSourceCurrentsById['external_supply']
+      : undefined
 
   return {
     ok: true,
     result: {
-      supplyVolts,
-      totalOhms: totalR.ohms,
-      totalCurrentA,
+      externalSupplyVolts,
+      externalSupplyCurrentA,
       resistors,
+      ammeters,
       resistorIndexById,
+      ammeterIndexById,
+      superposition: {
+        sources: solved.sources,
+        cases: solved.cases,
+        totalNodeVoltages: solved.totalNodeVoltages,
+        totalVoltageSourceCurrentsById: solved.totalVoltageSourceCurrentsById,
+      },
     },
   }
 }

@@ -3,7 +3,9 @@
 Data-driven **series/parallel** circuit visualizer + reducer + exporter.
 
 ## Features (current MVP)
-- Nested editor for **Resistor**, **Ammeter (ideal 0Ω)**, **Series sub-circuit**, **Parallel** blocks
+- Freeform **node-based editor** (drag nodes, connect components)
+- Automatically converts reducible graphs into the strict **series/parallel** layout for reduction/export
+- Components: **Resistor**, **Ammeter (ideal 0Ω)**, **Voltage source**, **Current source**
 - SVG circuit drawing (right angles)
 - Automatic reduction trace (deepest-first, one depth level per step) + LaTeX formulas (per level)
 - Export:

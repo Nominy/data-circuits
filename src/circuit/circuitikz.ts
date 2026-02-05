@@ -7,7 +7,9 @@ export type CircuitikzOptions = {
   includeGeneratedLabels?: boolean
   includeCtikzset?: boolean
   invertY?: boolean
+  includeTerminals?: boolean
   currentArrowLabelsByResistorId?: Record<string, string>
+  currentArrowDirectionsByResistorId?: Record<string, 1 | -1>
   resistorAutoLabelsById?: Record<string, string>
 }
 
@@ -45,11 +47,13 @@ export function exportCircuitikz(circuit: Circuit, options?: CircuitikzOptions):
     includeGeneratedLabels: options?.includeGeneratedLabels ?? true,
     includeCtikzset: options?.includeCtikzset ?? true,
     invertY: options?.invertY ?? true,
+    includeTerminals: options?.includeTerminals ?? true,
     currentArrowLabelsByResistorId: options?.currentArrowLabelsByResistorId ?? {},
+    currentArrowDirectionsByResistorId: options?.currentArrowDirectionsByResistorId ?? {},
     resistorAutoLabelsById: options?.resistorAutoLabelsById ?? {},
   }
 
-  const { drawables } = layoutCircuit(circuit)
+  const { drawables } = layoutCircuit(circuit, { includeTerminals: opts.includeTerminals })
   const lines: string[] = []
 
   const pt = (x: number, y: number) => point(x, opts.invertY ? -y : y)
@@ -77,6 +81,28 @@ export function exportCircuitikz(circuit: Circuit, options?: CircuitikzOptions):
       lines.push(`\\draw ${pt(d.from.x, d.from.y)} to[${parts.join(',')}] ${pt(d.to.x, d.to.y)};`)
       continue
     }
+    if (d.kind === 'vsource') {
+      const parts: string[] = ['V']
+      if (opts.includeLabels && d.label && d.label.trim().length > 0) {
+        parts.push(`l=$\\mathrm{${escapeLatexText(d.label)}}$`)
+      }
+      if (opts.includeValues && typeof d.volts === 'number') {
+        parts.push(`a=$${formatNum(d.volts)}\\,\\mathrm{V}$`)
+      }
+      lines.push(`\\draw ${pt(d.from.x, d.from.y)} to[${parts.join(',')}] ${pt(d.to.x, d.to.y)};`)
+      continue
+    }
+    if (d.kind === 'isource') {
+      const parts: string[] = ['I']
+      if (opts.includeLabels && d.label && d.label.trim().length > 0) {
+        parts.push(`l=$\\mathrm{${escapeLatexText(d.label)}}$`)
+      }
+      if (opts.includeValues && typeof d.amps === 'number') {
+        parts.push(`a=$${formatNum(d.amps)}\\,\\mathrm{A}$`)
+      }
+      lines.push(`\\draw ${pt(d.from.x, d.from.y)} to[${parts.join(',')}] ${pt(d.to.x, d.to.y)};`)
+      continue
+    }
     if (d.kind === 'resistor') {
       const parts: string[] = ['R']
       const labelAllowed = opts.includeLabels && (!d.generated || opts.includeGeneratedLabels)
@@ -92,14 +118,17 @@ export function exportCircuitikz(circuit: Circuit, options?: CircuitikzOptions):
 
       const currentLabel = opts.currentArrowLabelsByResistorId[d.id]
       if (currentLabel) {
-        const { ux, uy, len } = unitVec(d.from, d.to)
+        const dir = opts.currentArrowDirectionsByResistorId[d.id] ?? 1
+        const head = dir >= 0 ? d.from : d.to
+        const other = dir >= 0 ? d.to : d.from
+        const { ux, uy, len } = unitVec(head, other)
         if (len > 0) {
           const arrowLen = 0.6
-          const sx = d.from.x - ux * arrowLen
-          const sy = d.from.y - uy * arrowLen
-          const labelPos = Math.abs(d.to.x - d.from.x) >= Math.abs(d.to.y - d.from.y) ? 'above' : 'right'
+          const sx = head.x - ux * arrowLen
+          const sy = head.y - uy * arrowLen
+          const labelPos = Math.abs(other.x - head.x) >= Math.abs(other.y - head.y) ? 'above' : 'right'
           lines.push(
-            `\\draw[->] ${pt(sx, sy)} -- ${pt(d.from.x, d.from.y)} node[midway,${labelPos}]{$${currentLabel}$};`,
+            `\\draw[->] ${pt(sx, sy)} -- ${pt(head.x, head.y)} node[midway,${labelPos}]{$${currentLabel}$};`,
           )
         }
       }

@@ -14,7 +14,7 @@ export type RootRoute =
   | { mode: 'straight' }
   | { mode: 'u' }
 
-export type Node = Resistor | Ammeter | SeriesBlock | ParallelBlock
+export type Node = Resistor | Ammeter | VoltageSource | CurrentSource | SeriesBlock | ParallelBlock
 
 export type Resistor = {
   kind: 'resistor'
@@ -28,6 +28,20 @@ export type Ammeter = {
   kind: 'ammeter'
   id: string
   name?: string
+}
+
+export type VoltageSource = {
+  kind: 'vsource'
+  id: string
+  name?: string
+  volts: number
+}
+
+export type CurrentSource = {
+  kind: 'isource'
+  id: string
+  name?: string
+  amps: number
 }
 
 export type SeriesBlock = {
@@ -64,6 +78,20 @@ export const ammeterSchema = z.object({
   name: z.string().optional(),
 })
 
+export const voltageSourceSchema = z.object({
+  kind: z.literal('vsource'),
+  id: z.string(),
+  name: z.string().optional(),
+  volts: z.number().finite(),
+})
+
+export const currentSourceSchema = z.object({
+  kind: z.literal('isource'),
+  id: z.string(),
+  name: z.string().optional(),
+  amps: z.number().finite(),
+})
+
 export const seriesBlockSchema: z.ZodType<SeriesBlock> = z.lazy(() =>
   z.object({
     kind: z.literal('series'),
@@ -91,7 +119,7 @@ export const parallelBlockSchema: z.ZodType<ParallelBlock> = z.lazy(() =>
 )
 
 export const nodeSchema: z.ZodType<Node> = z.lazy(() =>
-  z.union([resistorSchema, ammeterSchema, seriesBlockSchema, parallelBlockSchema]),
+  z.union([resistorSchema, ammeterSchema, voltageSourceSchema, currentSourceSchema, seriesBlockSchema, parallelBlockSchema]),
 )
 
 export const circuitSchema: z.ZodType<Circuit> = z.object({

@@ -322,6 +322,18 @@ export function computeReductionLevels(
 ): { levels: ReductionLevel[] } | { error: string; levels: ReductionLevel[] } {
   const levels: ReductionLevel[] = [{ index: 0, circuit, reductions: [], latexAligned: '', latexAlign: '' }]
 
+  // Reduction is only valid for passive series/parallel networks (resistors + ideal ammeters).
+  const stack: Node[] =
+    circuit.route.mode === 'u'
+      ? [...(circuit.top ?? []), ...(circuit.right ?? []), ...(circuit.bottom ?? [])]
+      : [...(circuit.items ?? [])]
+  while (stack.length) {
+    const n = stack.pop()!
+    if (n.kind === 'vsource' || n.kind === 'isource') return { error: 'Reduction is not supported when sources are present.', levels }
+    if (n.kind === 'series') stack.push(...n.items)
+    if (n.kind === 'parallel') for (const b of n.branches) stack.push(...b.items)
+  }
+
   let current = circuit
   for (let i = 1; i <= maxLevels; i += 1) {
     const result = reduceOneLevel(current, i)

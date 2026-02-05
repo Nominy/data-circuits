@@ -20,6 +20,10 @@ function kindLabel(kind: Node['kind']): string {
       return 'Resistor'
     case 'ammeter':
       return 'Ammeter'
+    case 'vsource':
+      return 'Voltage source'
+    case 'isource':
+      return 'Current source'
     case 'series':
       return 'Sub-circuit (Series)'
     case 'parallel':
@@ -43,6 +47,8 @@ export function SeriesListEditor({
   const moveNode = useCircuitStore((s) => s.moveNode)
   const updateNodeName = useCircuitStore((s) => s.updateNodeName)
   const updateResistorOhms = useCircuitStore((s) => s.updateResistorOhms)
+  const updateVoltageSourceVolts = useCircuitStore((s) => s.updateVoltageSourceVolts)
+  const updateCurrentSourceAmps = useCircuitStore((s) => s.updateCurrentSourceAmps)
   const addParallelBranch = useCircuitStore((s) => s.addParallelBranch)
   const removeParallelBranch = useCircuitStore((s) => s.removeParallelBranch)
   const updateBranchName = useCircuitStore((s) => s.updateBranchName)
@@ -84,6 +90,28 @@ export function SeriesListEditor({
                 />
                 <span className="unit">Ω</span>
               </div>
+            ) : node.kind === 'vsource' ? (
+              <div className="cell">
+                <input
+                  className="input num"
+                  type="number"
+                  step={0.1}
+                  value={node.volts}
+                  onChange={(e) => updateVoltageSourceVolts(node.id, Number(e.target.value))}
+                />
+                <span className="unit">V</span>
+              </div>
+            ) : node.kind === 'isource' ? (
+              <div className="cell">
+                <input
+                  className="input num"
+                  type="number"
+                  step={0.001}
+                  value={node.amps}
+                  onChange={(e) => updateCurrentSourceAmps(node.id, Number(e.target.value))}
+                />
+                <span className="unit">A</span>
+              </div>
             ) : (
               <div className="cell mutedSmall">{node.kind === 'ammeter' ? '0 Ω' : ''}</div>
             )}
@@ -118,6 +146,12 @@ export function SeriesListEditor({
                 </button>
                 <button className="btn tiny" type="button" onClick={() => insertNode(listKey, absoluteIndex + 1, 'ammeter')}>
                   +A
+                </button>
+                <button className="btn tiny" type="button" onClick={() => insertNode(listKey, absoluteIndex + 1, 'vsource')}>
+                  +V
+                </button>
+                <button className="btn tiny" type="button" onClick={() => insertNode(listKey, absoluteIndex + 1, 'isource')}>
+                  +I
                 </button>
                 <button className="btn tiny" type="button" onClick={() => insertNode(listKey, absoluteIndex + 1, 'series')}>
                   +S
@@ -182,6 +216,12 @@ export function SeriesListEditor({
             </button>
             <button className="btn tiny" type="button" onClick={() => insertNode(listKey, indexOffset + items.length, 'ammeter')}>
               + Ammeter
+            </button>
+            <button className="btn tiny" type="button" onClick={() => insertNode(listKey, indexOffset + items.length, 'vsource')}>
+              + V Source
+            </button>
+            <button className="btn tiny" type="button" onClick={() => insertNode(listKey, indexOffset + items.length, 'isource')}>
+              + I Source
             </button>
             <button className="btn tiny" type="button" onClick={() => insertNode(listKey, indexOffset + items.length, 'series')}>
               + Series

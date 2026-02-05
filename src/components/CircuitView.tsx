@@ -1,6 +1,7 @@
 import { layoutCircuit } from '../circuit/layout'
 import type { ComponentDrawable, Drawable, WireDrawable } from '../circuit/layout'
-import { solveCircuitCurrentsAndVoltages } from '../circuit/solve'
+import { circuitHasIndependentSources } from '../circuit/graph'
+import { solveCircuit } from '../circuit/solve'
 import { useCircuitStore } from '../store/circuitStore'
 
 type Props = {
@@ -14,17 +15,20 @@ function isWire(d: Drawable): d is WireDrawable {
 }
 
 function isComponent(d: Drawable): d is ComponentDrawable {
-  return d.kind === 'resistor' || d.kind === 'ammeter'
+  return d.kind === 'resistor' || d.kind === 'ammeter' || d.kind === 'vsource' || d.kind === 'isource'
 }
 
 export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
   const settings = useCircuitStore((s) => s.settings)
-  const { drawables, bounds } = layoutCircuit(circuit)
-  const solved = typeof analysisSupplyVolts === 'number' ? solveCircuitCurrentsAndVoltages(circuit, analysisSupplyVolts) : null
-  const currentLabelByResistorId = solved?.ok
-    ? Object.fromEntries(solved.result.resistors.map((r) => [r.id, `I${r.index}`]))
+  const hasSources = circuitHasIndependentSources(circuit)
+  const includeTerminals = typeof analysisSupplyVolts === 'number' ? true : !hasSources
+  const { drawables, bounds } = layoutCircuit(circuit, { includeTerminals })
+  const solved = solveCircuit(circuit, typeof analysisSupplyVolts === 'number' ? { externalSupplyVolts: analysisSupplyVolts } : undefined)
+  const currentByResistorId = solved.ok ? Object.fromEntries(solved.result.resistors.map((r) => [r.id, r.currentA])) : ({} as Record<string, number>)
+  const currentLabelByResistorId = solved.ok
+    ? Object.fromEntries(solved.result.resistors.map((r) => [r.id, `I_R${r.index}`]))
     : ({} as Record<string, string>)
-  const resistorLabelById = solved?.ok
+  const resistorLabelById = solved.ok
     ? Object.fromEntries(solved.result.resistors.map((r) => [r.id, `R${r.index}`]))
     : ({} as Record<string, string>)
 
@@ -107,6 +111,56 @@ export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
             )
           }
 
+          if (c.kind === 'vsource' || c.kind === 'isource') {
+            const fill = 'rgba(0,0,0,0.65)'
+            const stroke = 'rgba(255,255,255,0.9)'
+            const valueText =
+              settings.showValuesOnDiagram && (c.kind === 'vsource' ? typeof c.volts === 'number' : typeof c.amps === 'number')
+                ? c.kind === 'vsource'
+                  ? `${c.volts}V`
+                  : `${c.amps}A`
+                : undefined
+
+            return (
+              <g key={`${c.kind}_${c.from.x}_${c.from.y}_${c.to.x}_${c.to.y}`}>
+                <circle
+                  cx={midX}
+                  cy={midY}
+                  r={0.26}
+                  fill={fill}
+                  stroke={stroke}
+                  strokeWidth={0.08}
+                  vectorEffect="non-scaling-stroke"
+                />
+                <text x={midX} y={midY + 0.12} fontSize={0.26} textAnchor="middle" fill="rgba(255,255,255,0.9)">
+                  {c.kind === 'vsource' ? 'V' : 'I'}
+                </text>
+                {c.label ? (
+                  <text
+                    x={midX + (horizontal ? 0 : 0.55)}
+                    y={midY + (horizontal ? -0.42 : 0.05)}
+                    fontSize={0.25}
+                    textAnchor="middle"
+                    fill="rgba(255,255,255,0.85)"
+                  >
+                    {c.label}
+                  </text>
+                ) : null}
+                {valueText ? (
+                  <text
+                    x={midX + (horizontal ? 0 : 0.55)}
+                    y={midY + (horizontal ? 0.52 : 0.35)}
+                    fontSize={0.24}
+                    textAnchor="middle"
+                    fill="rgba(255,255,255,0.75)"
+                  >
+                    {valueText}
+                  </text>
+                ) : null}
+              </g>
+            )
+          }
+
           const displayLabel = c.generated && !settings.showGeneratedLabels ? undefined : c.label
           const solvedLabel = !c.generated ? resistorLabelById[c.id] : undefined
           const effectiveLabel = solvedLabel ?? displayLabel
@@ -180,17 +234,21 @@ export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
           .flatMap((r) => {
             const label = currentLabelByResistorId[r.id]
             if (!label) return []
-            const dx = r.to.x - r.from.x
-            const dy = r.to.y - r.from.y
+            const currentA = currentByResistorId[r.id]
+            const forward = typeof currentA === 'number' ? currentA >= 0 : true
+            const tail = forward ? r.from : r.to
+            const head = forward ? r.to : r.from
+            const dx = head.x - tail.x
+            const dy = head.y - tail.y
             const len = Math.hypot(dx, dy)
             if (len === 0) return []
             const ux = dx / len
             const uy = dy / len
             const arrowLen = 0.6
-            const sx = r.from.x - ux * arrowLen
-            const sy = r.from.y - uy * arrowLen
-            const mx = (sx + r.from.x) / 2
-            const my = (sy + r.from.y) / 2
+            const sx = tail.x - ux * arrowLen
+            const sy = tail.y - uy * arrowLen
+            const mx = (sx + tail.x) / 2
+            const my = (sy + tail.y) / 2
             const horizontal = Math.abs(dx) >= Math.abs(dy)
 
             return [
@@ -198,8 +256,8 @@ export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
                 <line
                   x1={sx}
                   y1={sy}
-                  x2={r.from.x}
-                  y2={r.from.y}
+                  x2={tail.x}
+                  y2={tail.y}
                   stroke="rgba(255,255,255,0.85)"
                   strokeWidth={0.08}
                   vectorEffect="non-scaling-stroke"

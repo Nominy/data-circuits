@@ -1,7 +1,11 @@
 import './App.css'
+
+import { useState } from 'react'
+
 import { CircuitEditor } from './components/CircuitEditor'
 import { CircuitView } from './components/CircuitView'
 import { ExportPanel } from './components/ExportPanel'
+import { Modal } from './components/Modal'
 import { ReductionTrace } from './components/ReductionTrace'
 import { useCircuitStore } from './store/circuitStore'
 
@@ -16,25 +20,33 @@ function App() {
   const parsedSupply = rawSupply.length === 0 ? undefined : Number(rawSupply)
   const analysisSupplyVolts = rawSupply.length === 0 || !Number.isFinite(parsedSupply) ? undefined : parsedSupply
 
+  const [showStrict, setShowStrict] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+
   return (
-    <div className="app">
-      <header className="appHeader">
-        <div className="brand">Data Circuits</div>
-        <div className="mutedSmall">Series/parallel visualizer • reducer • CircuitikZ exporter</div>
+    <div className="appShell">
+      <header className="topBar">
+        <div className="topBarLeft">
+          <div className="brand">Data Circuits</div>
+          <div className="topBarHint">Full-canvas editor • Drag nodes • Drag components to connect</div>
+        </div>
+        <div className="topBarRight">
+          <button className="btn tiny" type="button" onClick={() => setShowStrict(true)}>
+            Strict view
+          </button>
+          <button className="btn tiny" type="button" onClick={() => setShowExport(true)}>
+            Export
+          </button>
+        </div>
       </header>
 
-      <div className="grid">
-        <div className="col">
-          <CircuitEditor />
-        </div>
-        <div className="col">
-          <div className="panel">
-            <div className="panelHeader">
-              <div>
-                <div className="panelTitle">Solution</div>
-                <div className="panelSubtitle">Diagram + reduction</div>
-              </div>
-            </div>
+      <main className="workspace">
+        <CircuitEditor />
+      </main>
+
+      {showStrict ? (
+        <Modal title="Strict view" onClose={() => setShowStrict(false)}>
+          <div className="modalContent">
             <div className="row addRow" style={{ marginBottom: 10 }}>
               <div className="cell kind mutedSmall">View</div>
               <div className="cell actions">
@@ -47,14 +59,22 @@ function App() {
               </div>
             </div>
             <CircuitView circuit={circuit} analysisSupplyVolts={analysisSupplyVolts} />
+            <div style={{ height: 12 }} />
+            <ReductionTrace circuit={circuit} />
           </div>
+        </Modal>
+      ) : null}
 
-          <ReductionTrace circuit={circuit} />
-          <ExportPanel circuit={circuit} />
-        </div>
-      </div>
+      {showExport ? (
+        <Modal title="Export" onClose={() => setShowExport(false)}>
+          <div className="modalContent">
+            <ExportPanel circuit={circuit} />
+          </div>
+        </Modal>
+      ) : null}
     </div>
   )
 }
 
 export default App
+

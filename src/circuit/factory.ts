@@ -1,5 +1,5 @@
 import { newId } from './id'
-import type { Ammeter, Circuit, ParallelBlock, ParallelBranch, Resistor, SeriesBlock } from './model'
+import type { Ammeter, Circuit, CurrentSource, ParallelBlock, ParallelBranch, Resistor, SeriesBlock, VoltageSource } from './model'
 
 export function createCircuit(): Circuit {
   return { kind: 'circuit', id: newId('circuit'), route: { mode: 'u' }, top: [], right: [], bottom: [] }
@@ -15,6 +15,14 @@ export function createEquivalentResistor(ohms: number, eqName?: string): Resisto
 
 export function createAmmeter(): Ammeter {
   return { kind: 'ammeter', id: newId('a') }
+}
+
+export function createVoltageSource(volts = 5): VoltageSource {
+  return { kind: 'vsource', id: newId('vs'), volts }
+}
+
+export function createCurrentSource(amps = 0.01): CurrentSource {
+  return { kind: 'isource', id: newId('is'), amps }
 }
 
 export function createSeriesBlock(): SeriesBlock {
