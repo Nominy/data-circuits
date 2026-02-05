@@ -1,0 +1,430 @@
+.appShell {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(128, 160, 255, 0.12), transparent 55%),
+        radial-gradient(900px 600px at 80% 0%, rgba(255, 120, 180, 0.08), transparent 55%),
+        #242424;
+}
+
+.topBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(10px);
+}
+
+.topBarLeft {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.topBarRight {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.topBarHint {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.workspace {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.brand {
+    font-size: 18px;
+    font-weight: 650;
+}
+
+.panel {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px;
+}
+
+.panelHeader {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.panelTitle {
+    font-weight: 650;
+}
+
+.panelSubtitle {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.muted {
+    opacity: 0.75;
+    font-size: 14px;
+}
+
+.mutedSmall {
+    opacity: 0.75;
+    font-size: 12px;
+}
+
+.btn {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    background-color: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+}
+.btn:hover {
+    border-color: rgba(128, 160, 255, 0.7);
+}
+.btn.tiny {
+    padding: 6px 8px;
+    font-size: 12px;
+}
+.btn.danger:hover {
+    border-color: rgba(255, 100, 120, 0.9);
+}
+
+.input {
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 8px 10px;
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.2);
+    color: inherit;
+}
+.input.num {
+    width: 110px;
+}
+
+.unit {
+    margin-left: 6px;
+    opacity: 0.8;
+}
+
+.seriesListTitle {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-bottom: 6px;
+}
+
+.seriesList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 130px 1fr 160px 170px 260px;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.14);
+}
+
+.row.addRow {
+    grid-template-columns: 130px 1fr 1fr;
+}
+
+.cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cell.kind {
+    font-weight: 650;
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.cell.grow {
+    width: 100%;
+}
+
+.cell.actions {
+    justify-content: flex-start;
+    gap: 6px;
+}
+
+.cell.insert {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.insertLabel {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.insertBtns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.nested {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.parallelHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.branch {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.12);
+    margin-bottom: 10px;
+}
+
+.branchHeader {
+  display: grid;
+  grid-template-columns: 90px 1fr 110px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.routeRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.routeSep {
+  font-size: 12px;
+  opacity: 0.7;
+  text-align: center;
+  padding: 6px 8px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.breakCtl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.circuitView svg {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.latex {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.18);
+    padding: 10px 12px;
+    overflow-x: auto;
+}
+
+.trace {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.traceStep {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.exportBox {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.25);
+    color: inherit;
+    padding: 10px 12px;
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.fileInput {
+    width: 100%;
+    max-width: 360px;
+}
+
+/* Canvas editor */
+.canvasRoot {
+    position: absolute;
+    inset: 0;
+}
+
+.canvasSvg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: rgba(0,0,0,0.14);
+}
+
+.floating {
+    position: absolute;
+    top: 14px;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    background: rgba(0,0,0,0.40);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+}
+
+.palette {
+    left: 14px;
+    width: 220px;
+    padding: 10px;
+}
+
+.inspector {
+    right: 14px;
+    width: 280px;
+    padding: 10px;
+}
+
+.floatingTitle {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-bottom: 8px;
+    font-weight: 650;
+}
+
+.paletteGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.paletteItem {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.05);
+    padding: 10px 10px;
+    cursor: grab;
+    user-select: none;
+}
+
+.paletteItem:hover {
+    border-color: rgba(128, 160, 255, 0.65);
+}
+
+.paletteItemLabel {
+    font-weight: 650;
+    font-size: 12px;
+}
+
+.paletteItemHint {
+    font-size: 11px;
+    opacity: 0.7;
+}
+
+.statusPill {
+    margin-top: 10px;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(0,0,0,0.28);
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 50;
+}
+
+.modalCard {
+    width: min(1100px, 100%);
+    max-height: min(92vh, 920px);
+    overflow: hidden;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(20,20,22,0.96);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+}
+
+.modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+}
+
+.modalTitle {
+    font-weight: 650;
+}
+
+.modalSubtitle {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.modalBody {
+    padding: 12px 14px;
+    overflow: auto;
+    max-height: calc(92vh - 64px);
+}
+
+.modalContent {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+@media (max-width: 980px) {
+    .row {
+        grid-template-columns: 1fr;
+    }
+    .row.addRow {
+        grid-template-columns: 1fr;
+    }
+    .cell.insert {
+        align-items: flex-start;
+    }
+    .branchHeader {
+        grid-template-columns: 1fr;
+    }
+}
