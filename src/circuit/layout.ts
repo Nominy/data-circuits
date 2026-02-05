@@ -6,6 +6,7 @@ export type WireDrawable = { kind: 'wire'; points: Point[] }
 export type ComponentDrawable =
   | {
       kind: 'resistor'
+      id: string
       from: Point
       to: Point
       label?: string
@@ -14,6 +15,7 @@ export type ComponentDrawable =
     }
   | {
       kind: 'ammeter'
+      id: string
       from: Point
       to: Point
       label?: string
@@ -120,6 +122,7 @@ function addWireLocal(drawables: Drawable[], bounds: LayoutResult['bounds'], fra
 type LocalComponent =
   | {
       kind: 'resistor'
+      id: string
       from: Point
       to: Point
       label?: string
@@ -128,6 +131,7 @@ type LocalComponent =
     }
   | {
       kind: 'ammeter'
+      id: string
       from: Point
       to: Point
       label?: string
@@ -245,6 +249,7 @@ function layoutNodeLocal(
     const end = { x: start.x + opts.resistorLen, y: start.y }
     addComponentLocal(drawables, bounds, frame, {
       kind: 'resistor',
+      id: node.id,
       from: start,
       to: end,
       label: node.name,
@@ -255,7 +260,7 @@ function layoutNodeLocal(
   }
   if (node.kind === 'ammeter') {
     const end = { x: start.x + opts.ammeterLen, y: start.y }
-    addComponentLocal(drawables, bounds, frame, { kind: 'ammeter', from: start, to: end, label: node.name })
+    addComponentLocal(drawables, bounds, frame, { kind: 'ammeter', id: node.id, from: start, to: end, label: node.name })
     return end
   }
   if (node.kind === 'series') {

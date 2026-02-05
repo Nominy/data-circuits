@@ -19,8 +19,10 @@ type UiSettings = {
 type CircuitState = {
   circuit: Circuit
   settings: UiSettings
+  analysis: { supplyVoltsText: string }
   setRootRouteMode: (mode: 'straight' | 'u') => void
   setCircuit: (circuit: Circuit) => void
+  setSupplyVoltsText: (text: string) => void
   insertNode: (listKey: SeriesListKey, index: number, kind: Node['kind']) => void
   removeNode: (listKey: SeriesListKey, index: number) => void
   moveNode: (listKey: SeriesListKey, fromIndex: number, toIndex: number) => void
@@ -118,7 +120,12 @@ export const useCircuitStore = create<CircuitState>()(
   immer((set) => ({
     circuit: createCircuit(),
     settings: { showValuesOnDiagram: true, showGeneratedLabels: true },
+    analysis: { supplyVoltsText: '' },
     setCircuit: (circuit) => set({ circuit }),
+    setSupplyVoltsText: (text) =>
+      set((draft) => {
+        draft.analysis.supplyVoltsText = text
+      }),
     setRootRouteMode: (mode) => {
       set((draft) => {
         if (mode === 'straight') {

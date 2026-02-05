@@ -8,8 +8,13 @@ import { useCircuitStore } from './store/circuitStore'
 function App() {
   const circuit = useCircuitStore((s) => s.circuit)
   const settings = useCircuitStore((s) => s.settings)
+  const supplyVoltsText = useCircuitStore((s) => s.analysis.supplyVoltsText)
   const toggleShowValues = useCircuitStore((s) => s.toggleShowValues)
   const toggleShowGeneratedLabels = useCircuitStore((s) => s.toggleShowGeneratedLabels)
+
+  const rawSupply = supplyVoltsText.trim()
+  const parsedSupply = rawSupply.length === 0 ? undefined : Number(rawSupply)
+  const analysisSupplyVolts = rawSupply.length === 0 || !Number.isFinite(parsedSupply) ? undefined : parsedSupply
 
   return (
     <div className="app">
@@ -41,7 +46,7 @@ function App() {
                 </button>
               </div>
             </div>
-            <CircuitView circuit={circuit} />
+            <CircuitView circuit={circuit} analysisSupplyVolts={analysisSupplyVolts} />
           </div>
 
           <ReductionTrace circuit={circuit} />

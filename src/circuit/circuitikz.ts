@@ -6,6 +6,9 @@ export type CircuitikzOptions = {
   includeLabels?: boolean
   includeGeneratedLabels?: boolean
   includeCtikzset?: boolean
+  invertY?: boolean
+  currentArrowLabelsByResistorId?: Record<string, string>
+  resistorAutoLabelsById?: Record<string, string>
 }
 
 function formatNum(value: number): string {
@@ -27,30 +30,43 @@ function point(x: number, y: number): string {
   return `(${formatNum(x)},${formatNum(y)})`
 }
 
+function unitVec(from: { x: number; y: number }, to: { x: number; y: number }): { ux: number; uy: number; len: number } {
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  const len = Math.hypot(dx, dy)
+  if (len === 0) return { ux: 0, uy: 0, len: 0 }
+  return { ux: dx / len, uy: dy / len, len }
+}
+
 export function exportCircuitikz(circuit: Circuit, options?: CircuitikzOptions): string {
   const opts: Required<CircuitikzOptions> = {
     includeValues: options?.includeValues ?? true,
     includeLabels: options?.includeLabels ?? true,
     includeGeneratedLabels: options?.includeGeneratedLabels ?? true,
     includeCtikzset: options?.includeCtikzset ?? true,
+    invertY: options?.invertY ?? true,
+    currentArrowLabelsByResistorId: options?.currentArrowLabelsByResistorId ?? {},
+    resistorAutoLabelsById: options?.resistorAutoLabelsById ?? {},
   }
 
   const { drawables } = layoutCircuit(circuit)
   const lines: string[] = []
+
+  const pt = (x: number, y: number) => point(x, opts.invertY ? -y : y)
 
   if (opts.includeCtikzset) lines.push('\\ctikzset{european}')
   lines.push('\\begin{circuitikz}[x=1cm,y=1cm]')
 
   for (const d of drawables) {
     if (d.kind === 'wire') {
-      const pts = d.points.map((p) => point(p.x, p.y)).join(' -- ')
+      const pts = d.points.map((p) => pt(p.x, p.y)).join(' -- ')
       lines.push(`\\draw ${pts};`)
       continue
     }
     if (d.kind === 'terminal') {
       const label = d.polarity === 'plus' ? '+' : '-'
       const anchor = d.polarity === 'plus' ? 'left' : 'right'
-      lines.push(`\\draw ${point(d.at.x, d.at.y)} node[ocirc]{} node[${anchor}]{$${label}$};`)
+      lines.push(`\\draw ${pt(d.at.x, d.at.y)} node[ocirc]{} node[${anchor}]{$${label}$};`)
       continue
     }
     if (d.kind === 'ammeter') {
@@ -58,19 +74,34 @@ export function exportCircuitikz(circuit: Circuit, options?: CircuitikzOptions):
       if (opts.includeLabels && d.label && d.label.trim().length > 0) {
         parts.push(`l=$\\mathrm{${escapeLatexText(d.label)}}$`)
       }
-      lines.push(`\\draw ${point(d.from.x, d.from.y)} to[${parts.join(',')}] ${point(d.to.x, d.to.y)};`)
+      lines.push(`\\draw ${pt(d.from.x, d.from.y)} to[${parts.join(',')}] ${pt(d.to.x, d.to.y)};`)
       continue
     }
     if (d.kind === 'resistor') {
       const parts: string[] = ['R']
       const labelAllowed = opts.includeLabels && (!d.generated || opts.includeGeneratedLabels)
-      if (labelAllowed && d.label && d.label.trim().length > 0) {
-        parts.push(`l=$\\mathrm{${escapeLatexText(d.label)}}$`)
+      if (labelAllowed) {
+        const label = d.label && d.label.trim().length > 0 ? d.label : opts.resistorAutoLabelsById[d.id]
+        if (label && label.trim().length > 0) parts.push(`l=$\\mathrm{${escapeLatexText(label)}}$`)
       }
       if (opts.includeValues && typeof d.ohms === 'number') {
         parts.push(`a=$${formatNum(d.ohms)}\\,\\Omega$`)
       }
-      lines.push(`\\draw ${point(d.from.x, d.from.y)} to[${parts.join(',')}] ${point(d.to.x, d.to.y)};`)
+      lines.push(`\\draw ${pt(d.from.x, d.from.y)} to[${parts.join(',')}] ${pt(d.to.x, d.to.y)};`)
+
+      const currentLabel = opts.currentArrowLabelsByResistorId[d.id]
+      if (currentLabel) {
+        const { ux, uy, len } = unitVec(d.from, d.to)
+        if (len > 0) {
+          const arrowLen = 0.6
+          const sx = d.from.x - ux * arrowLen
+          const sy = d.from.y - uy * arrowLen
+          const labelPos = Math.abs(d.to.x - d.from.x) >= Math.abs(d.to.y - d.from.y) ? 'above' : 'right'
+          lines.push(
+            `\\draw[->] ${pt(sx, sy)} -- ${pt(d.from.x, d.from.y)} node[midway,${labelPos}]{$${currentLabel}$};`,
+          )
+        }
+      }
       continue
     }
   }

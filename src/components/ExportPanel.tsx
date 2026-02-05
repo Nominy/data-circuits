@@ -16,6 +16,8 @@ type Props = {
 export function ExportPanel({ circuit }: Props) {
   const settings = useCircuitStore((s) => s.settings)
   const setCircuit = useCircuitStore((s) => s.setCircuit)
+  const supplyVoltsText = useCircuitStore((s) => s.analysis.supplyVoltsText)
+  const setSupplyVoltsText = useCircuitStore((s) => s.setSupplyVoltsText)
   const [mode, setMode] = useState<Mode>('solution-latex')
   const [includeLabels, setIncludeLabels] = useState(true)
   const [includeValues, setIncludeValues] = useState(true)
@@ -29,8 +31,12 @@ export function ExportPanel({ circuit }: Props) {
     const opts = { includeLabels, includeValues, includeGeneratedLabels }
     if (mode === 'circuitikz') return exportCircuitikz(circuit, opts)
     if (mode === 'json') return exportCircuitJson(circuit)
-    return exportSolutionLatex(reduction.levels, opts)
-  }, [mode, circuit, includeLabels, includeValues, includeGeneratedLabels, reduction.levels])
+
+    const raw = supplyVoltsText.trim()
+    const supplyVolts = raw.length === 0 ? undefined : Number(raw)
+    const analysis = raw.length === 0 || !Number.isFinite(supplyVolts) ? undefined : { supplyVolts }
+    return exportSolutionLatex(reduction.levels, opts, analysis)
+  }, [mode, circuit, includeLabels, includeValues, includeGeneratedLabels, reduction.levels, supplyVoltsText])
 
   const copy = async () => {
     await navigator.clipboard.writeText(text)
@@ -105,6 +111,27 @@ export function ExportPanel({ circuit }: Props) {
             </button>
             <div className="mutedSmall" style={{ marginLeft: 6 }}>
               (Preview: values {settings.showValuesOnDiagram ? 'on' : 'off'})
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {mode === 'solution-latex' ? (
+        <div className="row addRow" style={{ marginBottom: 10 }}>
+          <div className="cell kind mutedSmall">Supply</div>
+          <div className="cell actions" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              className="input num"
+              type="number"
+              step={0.1}
+              min={0}
+              placeholder="U (V)"
+              value={supplyVoltsText}
+              onChange={(e) => setSupplyVoltsText(e.target.value)}
+              style={{ width: 120 }}
+            />
+            <div className="mutedSmall" style={{ marginLeft: 6 }}>
+              Supply $U_s$ in volts (enables $I_k$ and $U_k$ in LaTeX + current arrows).
             </div>
           </div>
         </div>

@@ -1,10 +1,12 @@
 import { layoutCircuit } from '../circuit/layout'
 import type { ComponentDrawable, Drawable, WireDrawable } from '../circuit/layout'
+import { solveCircuitCurrentsAndVoltages } from '../circuit/solve'
 import { useCircuitStore } from '../store/circuitStore'
 
 type Props = {
   title?: string
   circuit: Parameters<typeof layoutCircuit>[0]
+  analysisSupplyVolts?: number
 }
 
 function isWire(d: Drawable): d is WireDrawable {
@@ -15,9 +17,14 @@ function isComponent(d: Drawable): d is ComponentDrawable {
   return d.kind === 'resistor' || d.kind === 'ammeter'
 }
 
-export function CircuitView({ title, circuit }: Props) {
+export function CircuitView({ title, circuit, analysisSupplyVolts }: Props) {
   const settings = useCircuitStore((s) => s.settings)
   const { drawables, bounds } = layoutCircuit(circuit)
+  const solved = typeof analysisSupplyVolts === 'number' ? solveCircuitCurrentsAndVoltages(circuit, analysisSupplyVolts) : null
+  const currentLabelByResistorId = solved?.ok
+    ? Object.fromEntries(solved.result.resistors.map((r) => [r.id, `I${r.index}`]))
+    : ({} as Record<string, string>)
+
   const pad = 1.4
   const minX = bounds.minX - pad
   const minY = bounds.minY - pad
@@ -28,6 +35,11 @@ export function CircuitView({ title, circuit }: Props) {
     <div className="circuitView">
       {title ? <div className="seriesListTitle">{title}</div> : null}
       <svg viewBox={`${minX} ${minY} ${width} ${height}`} width="100%" height="320" role="img">
+        <defs>
+          <marker id="currentArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(255,255,255,0.85)" />
+          </marker>
+        </defs>
         <g stroke="rgba(255,255,255,0.9)" strokeWidth={0.08} fill="none" vectorEffect="non-scaling-stroke">
           {drawables.filter(isWire).map((w, i) => (
             <polyline
@@ -157,8 +169,50 @@ export function CircuitView({ title, circuit }: Props) {
             </g>
           )
         })}
+
+        {drawables
+          .filter((d): d is ComponentDrawable => d.kind === 'resistor')
+          .flatMap((r) => {
+            const label = currentLabelByResistorId[r.id]
+            if (!label) return []
+            const dx = r.to.x - r.from.x
+            const dy = r.to.y - r.from.y
+            const len = Math.hypot(dx, dy)
+            if (len === 0) return []
+            const ux = dx / len
+            const uy = dy / len
+            const arrowLen = 0.6
+            const sx = r.from.x - ux * arrowLen
+            const sy = r.from.y - uy * arrowLen
+            const mx = (sx + r.from.x) / 2
+            const my = (sy + r.from.y) / 2
+            const horizontal = Math.abs(dx) >= Math.abs(dy)
+
+            return [
+              <g key={`i_${r.id}`}>
+                <line
+                  x1={sx}
+                  y1={sy}
+                  x2={r.from.x}
+                  y2={r.from.y}
+                  stroke="rgba(255,255,255,0.85)"
+                  strokeWidth={0.08}
+                  vectorEffect="non-scaling-stroke"
+                  markerEnd="url(#currentArrow)"
+                />
+                <text
+                  x={mx + (horizontal ? 0 : 0.35)}
+                  y={my + (horizontal ? -0.25 : 0)}
+                  fontSize={0.24}
+                  textAnchor="middle"
+                  fill="rgba(255,255,255,0.85)"
+                >
+                  {label}
+                </text>
+              </g>,
+            ]
+          })}
       </svg>
     </div>
   )
 }
-
